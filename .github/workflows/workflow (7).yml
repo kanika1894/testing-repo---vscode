@@ -1,0 +1,58 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    env:
+      REGISTRY_URL: kapasrijkubacr.azurecr.io
+      NAMESPACE: vscodebugbash2a837
+      IMAGE_NAME: vscodebugbash2
+      SECRET_NAME: vscodebugbash2
+
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+
+    - uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.REGISTRY_URL }}
+        username: ${{ secrets.kapasrijkubacr_f7c54_username }} 
+        password: ${{ secrets.kapasrijkubacr_f7c54_password }}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/node/plain/container/Application" -f  "node/plain/container/Application/Dockerfile" -t  $REGISTRY_URL/$IMAGE_NAME:${{ github.sha }}
+        docker push $REGISTRY_URL/$IMAGE_NAME:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{ secrets.vscodebugbash2_f7c54 }} 
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep $NAMESPACE | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace $NAMESPACE`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: ${{ env.NAMESPACE  }}
+        container-registry-url: ${{ env.REGISTRY_URL }}
+        container-registry-username: ${{ secrets.kapasrijkubacr_f7c54_username }}
+        container-registry-password: ${{ secrets.kapasrijkubacr_f7c54_password }}
+        secret-name: ${{ env.SECRET_NAME  }}
+       
+    - uses: azure/k8s-deploy@v1
+      with:
+        namespace: ${{ env.NAMESPACE  }}
+        manifests: |
+          node/plain/container/Application/manifests/deployment (11).yml
+          node/plain/container/Application/manifests/service (11).yml
+          node/plain/container/Application/manifests/ingress (10).yml
+
+        images: |
+          ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME  }}:${{ github.sha }}
+        imagepullsecrets: |
+          ${{ env.SECRET_NAME  }}
