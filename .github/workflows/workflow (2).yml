@@ -36,7 +36,7 @@ jobs:
     - uses: azure/appservice-settings@v1
       with:
         app-name: kptestapp
-        general-settings-json: '{"linuxFxVersion": NODE|10.10}' #'General configuration settings as Key Value pairs'
+        general-settings-json: '{"linuxFxVersion": 10.10}' #'General configuration settings as Key Value pairs'
 
     # deploy web app
     - uses: azure/webapps-deploy@v1
